@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 interface Recipe {
-  id: number;
+  id: string;
   title: string;
   description: string;
   image_url: string;
