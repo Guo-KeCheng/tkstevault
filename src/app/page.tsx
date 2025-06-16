@@ -156,22 +156,22 @@ export default function Home() {
           recipe.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (recipe.tags &&
             recipe.tags.some((tag: string) =>
-              tag.toLowerCase().includes(searchTerm.toLowerCase()),
-            )),
+              tag.toLowerCase().includes(searchTerm.toLowerCase())
+            ))
       );
     }
 
     // Category filter
     if (selectedCategory !== "all") {
       filtered = filtered.filter((recipe) =>
-        recipe.category.toLowerCase().includes(selectedCategory.toLowerCase()),
+        recipe.category.toLowerCase().includes(selectedCategory.toLowerCase())
       );
     }
 
     // Difficulty filter
     if (selectedDifficulty !== "all") {
       filtered = filtered.filter(
-        (recipe) => recipe.difficulty === selectedDifficulty,
+        (recipe) => recipe.difficulty === selectedDifficulty
       );
     }
 
@@ -200,8 +200,12 @@ export default function Home() {
   };
 
   const getUniqueCategories = () => {
-    const categories = recipes.map((recipe) => recipe.category);
-    return [...new Set(categories)];
+    const categories = recipes.map((r) => r.category);
+    const unique: string[] = [];
+    categories.forEach((cat) => {
+      if (!unique.includes(cat)) unique.push(cat);
+    });
+    return unique;
   };
 
   return (

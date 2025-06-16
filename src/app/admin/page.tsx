@@ -28,7 +28,10 @@ export default function AdminLogin() {
     setError("");
 
     // Check hardcoded credentials
-    if (username === "admin" && password === "gySXh&ZT8NNV!xA") {
+    if (
+      username === process.env.NEXT_PUBLIC_ADMIN_USERNAME &&
+      password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD
+    ) {
       // Store admin session in localStorage
       localStorage.setItem("adminAuthenticated", "true");
       localStorage.setItem("adminLoginTime", Date.now().toString());
