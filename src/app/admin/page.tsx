@@ -28,11 +28,11 @@ export default function AdminLogin() {
     setIsLoading(true);
     setError("");
 
-    // Check environment variables for credentials
-    const adminUsername = "admin";
-    const adminPassword = "password";
-
-    if (username === adminUsername && password === adminPassword) {
+    // Check hardcoded credentials
+    if (
+      username === process.env.NEXT_PUBLIC_ADMIN_USERNAME &&
+      password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD
+    ) {
       // Store admin session in localStorage
       localStorage.setItem("adminAuthenticated", "true");
       localStorage.setItem("adminLoginTime", Date.now().toString());
