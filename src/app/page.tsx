@@ -28,6 +28,7 @@ async function getRecipes() {
       .eq("published", true)
       .order("created_at", { ascending: false });
 
+    // console.log("Featured Recipes:", featuredRecipes);
     if (error) {
       console.error("Error fetching recipes:", error);
       return getMockRecipes();
