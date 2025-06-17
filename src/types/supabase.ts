@@ -9,6 +9,95 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      blog_media: {
+        Row: {
+          blog_post_id: string | null
+          caption: string | null
+          created_at: string | null
+          id: string
+          media_type: string | null
+          media_url: string
+          order_index: number | null
+        }
+        Insert: {
+          blog_post_id?: string | null
+          caption?: string | null
+          created_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url: string
+          order_index?: number | null
+        }
+        Update: {
+          blog_post_id?: string | null
+          caption?: string | null
+          created_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url?: string
+          order_index?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_media_blog_post_id_fkey"
+            columns: ["blog_post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_posts: {
+        Row: {
+          author_id: string | null
+          category: string | null
+          content: Json | null
+          created_at: string | null
+          description: string | null
+          featured: boolean | null
+          id: string
+          image_url: string | null
+          media_urls: string[] | null
+          published: boolean | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          video_url: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          category?: string | null
+          content?: Json | null
+          created_at?: string | null
+          description?: string | null
+          featured?: boolean | null
+          id?: string
+          image_url?: string | null
+          media_urls?: string[] | null
+          published?: boolean | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          category?: string | null
+          content?: Json | null
+          created_at?: string | null
+          description?: string | null
+          featured?: boolean | null
+          id?: string
+          image_url?: string | null
+          media_urls?: string[] | null
+          published?: boolean | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       recipe_media: {
         Row: {
           caption: string | null

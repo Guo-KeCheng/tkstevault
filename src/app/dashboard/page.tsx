@@ -54,6 +54,7 @@ export default function Dashboard() {
   >("dashboard");
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [adminMode, setAdminMode] = useState<"recipe" | "blog">("recipe");
   const router = useRouter();
 
   useEffect(() => {
@@ -69,6 +70,10 @@ export default function Dashboard() {
 
         if (now - loginTimestamp < sessionDuration) {
           setIsAuthenticated(true);
+          const mode =
+            (localStorage.getItem("adminMode") as "recipe" | "blog") ||
+            "recipe";
+          setAdminMode(mode);
           fetchRecipes();
         } else {
           // Session expired
@@ -88,8 +93,9 @@ export default function Dashboard() {
   const fetchRecipes = async () => {
     try {
       const supabase = createClient();
+      const tableName = adminMode === "blog" ? "blog_posts" : "recipes";
       const { data, error } = await supabase
-        .from("recipes")
+        .from(tableName)
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -99,14 +105,21 @@ export default function Dashboard() {
         setRecipes(data);
       }
     } catch (error) {
-      console.error("Error fetching recipes:", error);
+      console.error(`Error fetching ${adminMode}s:`, error);
     }
   };
 
   const handleSignOut = () => {
     localStorage.removeItem("adminAuthenticated");
     localStorage.removeItem("adminLoginTime");
+    localStorage.removeItem("adminMode");
     router.push("/");
+  };
+
+  const toggleAdminMode = () => {
+    const newMode = adminMode === "recipe" ? "blog" : "recipe";
+    setAdminMode(newMode);
+    localStorage.setItem("adminMode", newMode);
   };
 
   const handleCreateRecipe = () => {
@@ -127,21 +140,23 @@ export default function Dashboard() {
   };
 
   const handleDeleteRecipe = async (recipeId: string) => {
-    if (confirm("Are you sure you want to delete this recipe?")) {
+    const itemType = adminMode === "blog" ? "blog post" : "recipe";
+    if (confirm(`Are you sure you want to delete this ${itemType}?`)) {
       try {
         const supabase = createClient();
+        const tableName = adminMode === "blog" ? "blog_posts" : "recipes";
         const { error } = await supabase
-          .from("recipes")
+          .from(tableName)
           .delete()
           .eq("id", recipeId);
 
         if (error) throw error;
 
-        // Refresh recipes after deletion
+        // Refresh items after deletion
         await fetchRecipes();
       } catch (error) {
-        console.error("Error deleting recipe:", error);
-        alert("Failed to delete recipe. Please try again.");
+        console.error(`Error deleting ${itemType}:`, error);
+        alert(`Failed to delete ${itemType}. Please try again.`);
       }
     }
   };
@@ -172,6 +187,7 @@ export default function Dashboard() {
         recipe={selectedRecipe || undefined}
         onSave={handleSaveRecipe}
         onCancel={handleBackToDashboard}
+        mode={adminMode}
       />
     );
   }
@@ -185,15 +201,51 @@ export default function Dashboard() {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Recipe Dashboard
+                {adminMode === "recipe" ? "Recipe Dashboard" : "Blog Dashboard"}
               </h1>
               <p className="text-gray-600 mt-2">
-                Manage your recipe blog content
+                {adminMode === "recipe"
+                  ? "Manage your recipe blog content"
+                  : "Create and manage blog posts with rich content"}
               </p>
             </div>
-            <Button onClick={handleSignOut} variant="outline">
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                <ChefHat
+                  className={`w-4 h-4 ${
+                    adminMode === "recipe" ? "text-orange-600" : "text-gray-400"
+                  }`}
+                />
+                <button
+                  onClick={toggleAdminMode}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    adminMode === "recipe"
+                      ? "bg-orange-600 text-white"
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  Recipe
+                </button>
+                <button
+                  onClick={toggleAdminMode}
+                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    adminMode === "blog"
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  Blog
+                </button>
+                <Edit
+                  className={`w-4 h-4 ${
+                    adminMode === "blog" ? "text-blue-600" : "text-gray-400"
+                  }`}
+                />
+              </div>
+              <Button onClick={handleSignOut} variant="outline">
+                Sign Out
+              </Button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -227,21 +279,26 @@ export default function Dashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Avg Prep Time
+                  {adminMode === "recipe" ? "Avg Prep Time" : "Total Views"}
                 </CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {recipes.length > 0
+                  {adminMode === "recipe" && recipes.length > 0
                     ? Math.round(
-                        recipes.reduce((acc, r) => acc + r.prep_time, 0) /
-                          recipes.length,
-                      )
-                    : 0}
-                  m
+                        recipes.reduce(
+                          (acc, r) => acc + (r.prep_time || 0),
+                          0,
+                        ) / recipes.length,
+                      ) + "m"
+                    : adminMode === "blog"
+                      ? "N/A"
+                      : "0m"}
                 </div>
-                <p className="text-xs text-muted-foreground">Average time</p>
+                <p className="text-xs text-muted-foreground">
+                  {adminMode === "recipe" ? "Average time" : "Coming soon"}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -273,7 +330,9 @@ export default function Dashboard() {
                   onClick={handleCreateRecipe}
                 >
                   <Plus className="h-6 w-6" />
-                  Add New Recipe
+                  {adminMode === "recipe"
+                    ? "Add New Recipe"
+                    : "Create Blog Post"}
                 </Button>
                 <Button
                   variant="outline"
@@ -303,9 +362,13 @@ export default function Dashboard() {
           {/* Recipe Management */}
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle>Your Recipes</CardTitle>
+              <CardTitle>
+                {adminMode === "recipe" ? "Your Recipes" : "Your Blog Posts"}
+              </CardTitle>
               <CardDescription>
-                Manage and edit your recipe collection
+                {adminMode === "recipe"
+                  ? "Manage and edit your recipe collection"
+                  : "Manage and edit your blog posts"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -313,11 +376,15 @@ export default function Dashboard() {
                 <div className="text-center py-8">
                   <ChefHat className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500 mb-4">
-                    No recipes yet. Create your first recipe!
+                    {adminMode === "recipe"
+                      ? "No recipes yet. Create your first recipe!"
+                      : "No blog posts yet. Create your first post!"}
                   </p>
                   <Button onClick={handleCreateRecipe}>
                     <Plus className="w-4 h-4 mr-2" />
-                    Create Recipe
+                    {adminMode === "recipe"
+                      ? "Create Recipe"
+                      : "Create Blog Post"}
                   </Button>
                 </div>
               ) : (
@@ -350,14 +417,23 @@ export default function Dashboard() {
                             {recipe.description}
                           </p>
                           <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {recipe.prep_time + recipe.cook_time} min
-                            </span>
+                            {adminMode === "recipe" && (
+                              <>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  {(recipe.prep_time || 0) +
+                                    (recipe.cook_time || 0)}{" "}
+                                  min
+                                </span>
+                                <span>{recipe.servings} servings</span>
+                                <span className="capitalize">
+                                  {recipe.difficulty}
+                                </span>
+                              </>
+                            )}
                             <span>{recipe.category}</span>
-                            <span>{recipe.servings} servings</span>
-                            <span className="capitalize">
-                              {recipe.difficulty}
+                            <span className="text-xs text-gray-400">
+                              {new Date(recipe.created_at).toLocaleDateString()}
                             </span>
                           </div>
                         </div>

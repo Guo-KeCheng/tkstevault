@@ -36,12 +36,14 @@ interface RecipeEditorProps {
   recipe?: Recipe;
   onSave: (recipe: Recipe) => void;
   onCancel: () => void;
+  mode?: "recipe" | "blog";
 }
 
 export default function RecipeEditor({
   recipe,
   onSave,
   onCancel,
+  mode = "recipe",
 }: RecipeEditorProps) {
   const [formData, setFormData] = useState<Recipe>({
     title: "",
@@ -158,45 +160,14 @@ export default function RecipeEditor({
 
     try {
       const supabase = createClient();
+      const tableName = mode === "blog" ? "blog_posts" : "recipes";
 
       if (recipe?.id) {
-        // Update existing recipe
-        const { error } = await supabase
-          .from("recipes")
-          .update({
-            title: formData.title,
-            description: formData.description,
-            content: formData.content,
-            ingredients: formData.ingredients.filter((i) => i.trim()),
-            instructions: formData.instructions.filter((i) => i.trim()),
-            prep_time: formData.prep_time,
-            cook_time: formData.cook_time,
-            servings: formData.servings,
-            difficulty: formData.difficulty,
-            category: formData.category,
-            tags: formData.tags,
-            image_url: formData.image_url,
-            video_url: formData.video_url,
-            media_urls: formData.media_urls,
-            published: formData.published,
-            featured: formData.featured,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", recipe.id);
-
-        if (error) throw error;
-      } else {
-        // Create new recipe
-        const { error } = await supabase.from("recipes").insert({
+        // Update existing item
+        const updateData: any = {
           title: formData.title,
           description: formData.description,
           content: formData.content,
-          ingredients: formData.ingredients.filter((i) => i.trim()),
-          instructions: formData.instructions.filter((i) => i.trim()),
-          prep_time: formData.prep_time,
-          cook_time: formData.cook_time,
-          servings: formData.servings,
-          difficulty: formData.difficulty,
           category: formData.category,
           tags: formData.tags,
           image_url: formData.image_url,
@@ -204,15 +175,63 @@ export default function RecipeEditor({
           media_urls: formData.media_urls,
           published: formData.published,
           featured: formData.featured,
-        });
+          updated_at: new Date().toISOString(),
+        };
+
+        // Add recipe-specific fields only for recipe mode
+        if (mode === "recipe") {
+          updateData.ingredients = formData.ingredients.filter((i) => i.trim());
+          updateData.instructions = formData.instructions.filter((i) =>
+            i.trim(),
+          );
+          updateData.prep_time = formData.prep_time;
+          updateData.cook_time = formData.cook_time;
+          updateData.servings = formData.servings;
+          updateData.difficulty = formData.difficulty;
+        }
+
+        const { error } = await supabase
+          .from(tableName)
+          .update(updateData)
+          .eq("id", recipe.id);
+
+        if (error) throw error;
+      } else {
+        // Create new item
+        const insertData: any = {
+          title: formData.title,
+          description: formData.description,
+          content: formData.content,
+          category: formData.category,
+          tags: formData.tags,
+          image_url: formData.image_url,
+          video_url: formData.video_url,
+          media_urls: formData.media_urls,
+          published: formData.published,
+          featured: formData.featured,
+        };
+
+        // Add recipe-specific fields only for recipe mode
+        if (mode === "recipe") {
+          insertData.ingredients = formData.ingredients.filter((i) => i.trim());
+          insertData.instructions = formData.instructions.filter((i) =>
+            i.trim(),
+          );
+          insertData.prep_time = formData.prep_time;
+          insertData.cook_time = formData.cook_time;
+          insertData.servings = formData.servings;
+          insertData.difficulty = formData.difficulty;
+        }
+
+        const { error } = await supabase.from(tableName).insert(insertData);
 
         if (error) throw error;
       }
 
       onSave(formData);
     } catch (error) {
-      console.error("Error saving recipe:", error);
-      alert("Failed to save recipe. Please try again.");
+      console.error(`Error saving ${mode}:`, error);
+      alert(`Failed to save ${mode}. Please try again.`);
     } finally {
       setIsUploading(false);
     }
@@ -227,7 +246,13 @@ export default function RecipeEditor({
             Back to Dashboard
           </Button>
           <h1 className="text-2xl font-bold">
-            {recipe ? "Edit Recipe" : "Create New Recipe"}
+            {mode === "blog"
+              ? recipe
+                ? "Edit Blog Post"
+                : "Create New Blog Post"
+              : recipe
+                ? "Edit Recipe"
+                : "Create New Recipe"}
           </h1>
         </div>
 
@@ -235,7 +260,9 @@ export default function RecipeEditor({
           {/* Basic Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
+              <CardTitle>
+                {mode === "blog" ? "Post Information" : "Basic Information"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -243,7 +270,9 @@ export default function RecipeEditor({
                 <Input
                   value={formData.title}
                   onChange={(e) => handleInputChange("title", e.target.value)}
-                  placeholder="Recipe title"
+                  placeholder={
+                    mode === "blog" ? "Blog post title" : "Recipe title"
+                  }
                   required
                 />
               </div>
@@ -257,73 +286,79 @@ export default function RecipeEditor({
                   onChange={(e) =>
                     handleInputChange("description", e.target.value)
                   }
-                  placeholder="Brief description"
+                  placeholder={
+                    mode === "blog"
+                      ? "Brief description of your post"
+                      : "Brief description"
+                  }
                 />
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Prep Time (min)
-                  </label>
-                  <Input
-                    type="number"
-                    value={formData.prep_time}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "prep_time",
-                        parseInt(e.target.value) || 0,
-                      )
-                    }
-                  />
+              {mode === "recipe" && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Prep Time (min)
+                    </label>
+                    <Input
+                      type="number"
+                      value={formData.prep_time}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "prep_time",
+                          parseInt(e.target.value) || 0,
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Cook Time (min)
+                    </label>
+                    <Input
+                      type="number"
+                      value={formData.cook_time}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "cook_time",
+                          parseInt(e.target.value) || 0,
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Servings
+                    </label>
+                    <Input
+                      type="number"
+                      value={formData.servings}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "servings",
+                          parseInt(e.target.value) || 1,
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Difficulty
+                    </label>
+                    <select
+                      value={formData.difficulty}
+                      onChange={(e) =>
+                        handleInputChange("difficulty", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    >
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Cook Time (min)
-                  </label>
-                  <Input
-                    type="number"
-                    value={formData.cook_time}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "cook_time",
-                        parseInt(e.target.value) || 0,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Servings
-                  </label>
-                  <Input
-                    type="number"
-                    value={formData.servings}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "servings",
-                        parseInt(e.target.value) || 1,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Difficulty
-                  </label>
-                  <select
-                    value={formData.difficulty}
-                    onChange={(e) =>
-                      handleInputChange("difficulty", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  >
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                  </select>
-                </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -335,7 +370,11 @@ export default function RecipeEditor({
                     onChange={(e) =>
                       handleInputChange("category", e.target.value)
                     }
-                    placeholder="e.g., Italian, Dessert, Healthy"
+                    placeholder={
+                      mode === "blog"
+                        ? "e.g., Travel, Food, Lifestyle"
+                        : "e.g., Italian, Dessert, Healthy"
+                    }
                   />
                 </div>
                 <div>
@@ -484,105 +523,130 @@ export default function RecipeEditor({
             </CardContent>
           </Card>
 
-          {/* Ingredients */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Ingredients</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {formData.ingredients.map((ingredient, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      value={ingredient}
-                      onChange={(e) =>
-                        handleArrayChange("ingredients", index, e.target.value)
-                      }
-                      placeholder={`Ingredient ${index + 1}`}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("ingredients", index)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => addArrayItem("ingredients")}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Ingredient
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Instructions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Instructions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {formData.instructions.map((instruction, index) => (
-                  <div key={index} className="flex gap-2">
-                    <div className="flex-1">
-                      <div className="text-sm text-gray-500 mb-1">
-                        Step {index + 1}
-                      </div>
+          {/* Ingredients - Only show for recipe mode */}
+          {mode === "recipe" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Ingredients</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {formData.ingredients.map((ingredient, index) => (
+                    <div key={index} className="flex gap-2">
                       <Input
-                        value={instruction}
+                        value={ingredient}
                         onChange={(e) =>
                           handleArrayChange(
-                            "instructions",
+                            "ingredients",
                             index,
                             e.target.value,
                           )
                         }
-                        placeholder={`Step ${index + 1} instructions`}
+                        placeholder={`Ingredient ${index + 1}`}
                       />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeArrayItem("ingredients", index)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("instructions", index)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => addArrayItem("instructions")}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Step
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => addArrayItem("ingredients")}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Ingredient
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Instructions - Only show for recipe mode */}
+          {mode === "recipe" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Instructions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {formData.instructions.map((instruction, index) => (
+                    <div key={index} className="flex gap-2">
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-500 mb-1">
+                          Step {index + 1}
+                        </div>
+                        <Input
+                          value={instruction}
+                          onChange={(e) =>
+                            handleArrayChange(
+                              "instructions",
+                              index,
+                              e.target.value,
+                            )
+                          }
+                          placeholder={`Step ${index + 1} instructions`}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeArrayItem("instructions", index)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => addArrayItem("instructions")}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Step
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Rich Text Content */}
           <Card>
             <CardHeader>
-              <CardTitle>Recipe Story & Notes</CardTitle>
+              <CardTitle>
+                {mode === "blog" ? "Blog Content" : "Recipe Story & Notes"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="min-h-[300px]">
+              <div className="min-h-[400px]">
                 <ReactQuill
                   theme="snow"
                   value={formData.content}
                   onChange={(content) => handleInputChange("content", content)}
-                  modules={quillModules}
-                  placeholder="Share the story behind this recipe, cooking tips, or any additional notes..."
-                  style={{ height: "250px" }}
+                  modules={{
+                    toolbar: [
+                      [{ header: [1, 2, 3, false] }],
+                      ["bold", "italic", "underline", "strike"],
+                      [{ list: "ordered" }, { list: "bullet" }],
+                      ["blockquote", "code-block"],
+                      ["link", "image", "video"],
+                      [{ color: [] }, { background: [] }],
+                      [{ align: [] }],
+                      ["clean"],
+                    ],
+                  }}
+                  placeholder={
+                    mode === "blog"
+                      ? "Write your blog post content here. You can add images, videos, and rich formatting..."
+                      : "Share the story behind this recipe, cooking tips, or any additional notes..."
+                  }
+                  style={{ height: mode === "blog" ? "350px" : "250px" }}
                 />
               </div>
             </CardContent>
@@ -628,7 +692,13 @@ export default function RecipeEditor({
             </Button>
             <Button type="submit">
               <Save className="w-4 h-4 mr-2" />
-              {recipe ? "Update Recipe" : "Save Recipe"}
+              {mode === "blog"
+                ? recipe
+                  ? "Update Post"
+                  : "Save Post"
+                : recipe
+                  ? "Update Recipe"
+                  : "Save Recipe"}
             </Button>
           </div>
         </form>

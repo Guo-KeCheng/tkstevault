@@ -1,65 +1,72 @@
-"use client";
-
 import Footer from "@/components/footer";
 import Hero from "@/components/hero";
 import Navbar from "@/components/navbar";
 import RecipeCard from "@/components/recipe-card";
-import { Search, Filter, ChefHat } from "lucide-react";
-import { createClient } from "../../supabase/client";
-import { useState, useEffect } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import RecipeFilters from "@/components/recipe-filters";
+import { ChefHat } from "lucide-react";
+import { createClient } from "../../supabase/server";
+import { Suspense } from "react";
+import Link from "next/link";
 
-export default function Home() {
-  const [recipes, setRecipes] = useState<any[]>([]);
-  const [filteredRecipes, setFilteredRecipes] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
-  const [maxCookTime, setMaxCookTime] = useState("all");
-  const [loading, setLoading] = useState(true);
+interface SearchParams {
+  search?: string;
+  category?: string;
+  difficulty?: string;
+  maxCookTime?: string;
+}
 
-  useEffect(() => {
-    fetchRecipes();
-  }, []);
+interface HomeProps {
+  searchParams: SearchParams;
+}
 
-  useEffect(() => {
-    filterRecipes();
-  }, [recipes, searchTerm, selectedCategory, selectedDifficulty, maxCookTime]);
+async function getRecipes() {
+  try {
+    const supabase = await createClient();
+    const { data: featuredRecipes, error } = await supabase
+      .from("recipes")
+      .select("*")
+      .eq("published", true)
+      .order("created_at", { ascending: false });
 
-  const fetchRecipes = async () => {
-    try {
-      const supabase = createClient();
-      const { data: featuredRecipes, error } = await supabase
-        .from("recipes")
-        .select("*")
-        .eq("published", true)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching recipes:", error);
-        setRecipes(getMockRecipes());
-      } else if (featuredRecipes && featuredRecipes.length > 0) {
-        setRecipes(featuredRecipes);
-      } else {
-        setRecipes(getMockRecipes());
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      setRecipes(getMockRecipes());
-    } finally {
-      setLoading(false);
+    if (error) {
+      console.error("Error fetching recipes:", error);
+      return getMockRecipes();
+    } else if (featuredRecipes && featuredRecipes.length > 0) {
+      return featuredRecipes;
+    } else {
+      return getMockRecipes();
     }
-  };
+  } catch (error) {
+    console.error("Error:", error);
+    return getMockRecipes();
+  }
+}
 
-  const getMockRecipes = () => [
+async function getBlogPosts() {
+  try {
+    const supabase = await createClient();
+    const { data: blogPosts, error } = await supabase
+      .from("blog_posts")
+      .select("*")
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    if (error) {
+      console.error("Error fetching blog posts:", error);
+      return [];
+    }
+    return blogPosts || [];
+  } catch (error) {
+    console.error("Error:", error);
+    return [];
+  }
+}
+
+function getMockRecipes() {
+  return [
     {
-      id: 1,
+      id: "1",
       title: "Classic Margherita Pizza",
       description:
         "A timeless Italian classic with fresh basil, mozzarella, and tomato sauce on a perfectly crispy crust.",
@@ -73,7 +80,7 @@ export default function Home() {
       tags: ["pizza", "italian", "vegetarian"],
     },
     {
-      id: 2,
+      id: "2",
       title: "Creamy Mushroom Risotto",
       description:
         "Rich and creamy Arborio rice cooked with wild mushrooms and finished with Parmesan cheese.",
@@ -87,7 +94,7 @@ export default function Home() {
       tags: ["risotto", "mushroom", "vegetarian"],
     },
     {
-      id: 3,
+      id: "3",
       title: "Chocolate Lava Cake",
       description:
         "Decadent individual chocolate cakes with a molten center, served warm with vanilla ice cream.",
@@ -101,7 +108,7 @@ export default function Home() {
       tags: ["chocolate", "dessert", "quick"],
     },
     {
-      id: 4,
+      id: "4",
       title: "Fresh Garden Salad",
       description:
         "Crisp mixed greens with seasonal vegetables, cherry tomatoes, and homemade vinaigrette.",
@@ -115,7 +122,7 @@ export default function Home() {
       tags: ["salad", "healthy", "vegetarian"],
     },
     {
-      id: 5,
+      id: "5",
       title: "Beef Bourguignon",
       description:
         "Traditional French braised beef in red wine with pearl onions, mushrooms, and herbs.",
@@ -129,7 +136,7 @@ export default function Home() {
       tags: ["beef", "french", "wine"],
     },
     {
-      id: 6,
+      id: "6",
       title: "Lemon Herb Salmon",
       description:
         "Pan-seared salmon fillet with fresh herbs, lemon, and a light butter sauce.",
@@ -143,205 +150,221 @@ export default function Home() {
       tags: ["salmon", "seafood", "healthy"],
     },
   ];
+}
 
-  const filterRecipes = () => {
-    let filtered = [...recipes];
+function filterRecipes(recipes: any[], searchParams: SearchParams) {
+  let filtered = [...recipes];
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (recipe) =>
-          recipe.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          recipe.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          recipe.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (recipe.tags &&
-            recipe.tags.some((tag: string) =>
-              tag.toLowerCase().includes(searchTerm.toLowerCase())
-            ))
-      );
-    }
+  // Search filter
+  if (searchParams.search) {
+    filtered = filtered.filter(
+      (recipe) =>
+        recipe.title
+          .toLowerCase()
+          .includes(searchParams.search!.toLowerCase()) ||
+        recipe.description
+          .toLowerCase()
+          .includes(searchParams.search!.toLowerCase()) ||
+        recipe.category
+          .toLowerCase()
+          .includes(searchParams.search!.toLowerCase()) ||
+        (recipe.tags &&
+          recipe.tags.some((tag: string) =>
+            tag.toLowerCase().includes(searchParams.search!.toLowerCase()),
+          )),
+    );
+  }
 
-    // Category filter
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter((recipe) =>
-        recipe.category.toLowerCase().includes(selectedCategory.toLowerCase())
-      );
-    }
+  // Category filter
+  if (searchParams.category && searchParams.category !== "all") {
+    filtered = filtered.filter((recipe) =>
+      recipe.category
+        .toLowerCase()
+        .includes(searchParams.category!.toLowerCase()),
+    );
+  }
 
-    // Difficulty filter
-    if (selectedDifficulty !== "all") {
-      filtered = filtered.filter(
-        (recipe) => recipe.difficulty === selectedDifficulty
-      );
-    }
+  // Difficulty filter
+  if (searchParams.difficulty && searchParams.difficulty !== "all") {
+    filtered = filtered.filter(
+      (recipe) => recipe.difficulty === searchParams.difficulty,
+    );
+  }
 
-    // Cook time filter
-    if (maxCookTime !== "all") {
-      const maxTime = parseInt(maxCookTime);
-      filtered = filtered.filter((recipe) => {
-        const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
-        return totalTime <= maxTime;
-      });
-    }
-
-    setFilteredRecipes(filtered);
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    filterRecipes();
-  };
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setSelectedCategory("all");
-    setSelectedDifficulty("all");
-    setMaxCookTime("all");
-  };
-
-  const getUniqueCategories = () => {
-    const categories = recipes.map((r) => r.category);
-    const unique: string[] = [];
-    categories.forEach((cat) => {
-      if (!unique.includes(cat)) unique.push(cat);
+  // Cook time filter
+  if (searchParams.maxCookTime && searchParams.maxCookTime !== "all") {
+    const maxTime = parseInt(searchParams.maxCookTime);
+    filtered = filtered.filter((recipe) => {
+      const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
+      return totalTime <= maxTime;
     });
-    return unique;
-  };
+  }
 
+  return filtered;
+}
+
+function getUniqueCategories(recipes: any[]) {
+  const categories = recipes.map((r) => r.category);
+  const unique: string[] = [];
+  categories.forEach((cat) => {
+    if (!unique.includes(cat)) unique.push(cat);
+  });
+  return unique;
+}
+
+async function RecipesList({ searchParams }: { searchParams: SearchParams }) {
+  const recipes = await getRecipes();
+  const filteredRecipes = filterRecipes(recipes, searchParams);
+  const uniqueCategories = getUniqueCategories(recipes);
+
+  return (
+    <>
+      <RecipeFilters
+        uniqueCategories={uniqueCategories}
+        totalRecipes={recipes.length}
+        filteredCount={filteredRecipes.length}
+      />
+
+      {/* Recipe Grid */}
+      {filteredRecipes.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {filteredRecipes.map((recipe) => (
+            <RecipeCard key={recipe.id} recipe={recipe} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <ChefHat className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-medium text-gray-900 mb-2">
+            No recipes found
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Try adjusting your search terms or filters
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
+function BlogPostCard({ post }: { post: any }) {
+  return (
+    <Link href={`/blog/${post.id}`} className="block group">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 cursor-pointer group-hover:scale-[1.02]">
+        <div className="aspect-w-16 aspect-h-9 relative">
+          <img
+            src={
+              post.image_url ||
+              "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&q=80"
+            }
+            alt={post.title}
+            className="w-full h-48 object-cover group-hover:brightness-110 transition-all duration-300"
+          />
+          <div className="absolute top-2 right-2">
+            <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+              Blog
+            </span>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-blue-600 font-medium">
+              {post.category || "General"}
+            </span>
+            <span className="text-sm text-gray-500">
+              {new Date(post.created_at).toLocaleDateString()}
+            </span>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+            {post.title}
+          </h3>
+          <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+            {post.description}
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {post.tags?.slice(0, 3).map((tag: string, index: number) => (
+              <span
+                key={index}
+                className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+async function BlogSection() {
+  const blogPosts = await getBlogPosts();
+
+  if (blogPosts.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="py-16 px-4 max-w-7xl mx-auto bg-gray-50">
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center">
+          Latest Blog Posts
+        </h2>
+        <p className="text-gray-600 text-center max-w-2xl mx-auto">
+          Discover stories, tips, and insights from my culinary journey
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {blogPosts.map((post) => (
+          <BlogPostCard key={post.id} post={post} />
+        ))}
+      </div>
+
+      {blogPosts.length >= 6 && (
+        <div className="text-center mt-8">
+          <Link
+            href="/blog"
+            className="inline-flex items-center px-6 py-3 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+          >
+            View All Blog Posts
+          </Link>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export default async function Home({ searchParams }: HomeProps) {
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
       <Hero />
 
       {/* Search and Filter Section */}
-      <section className="py-16 px-4 max-w-7xl mx-auto">
+      <section className="py-16 px-4 max-w-7xl mx-auto" id="recipes">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
             Discover Amazing Recipes
           </h2>
 
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="mb-6">
-            <div className="relative max-w-md mx-auto">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Search recipes..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
-            </div>
-          </form>
-
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4 justify-center items-center mb-6">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">
-                Filters:
-              </span>
-            </div>
-
-            {/* Category Filter */}
-            <Select
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {getUniqueCategories().map((category) => (
-                  <SelectItem key={category} value={category.toLowerCase()}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Difficulty Filter */}
-            <Select
-              value={selectedDifficulty}
-              onValueChange={setSelectedDifficulty}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Difficulty" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="easy">Easy</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="hard">Hard</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Cook Time Filter */}
-            <Select value={maxCookTime} onValueChange={setMaxCookTime}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Cook Time" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Any Time</SelectItem>
-                <SelectItem value="30">Under 30 min</SelectItem>
-                <SelectItem value="60">Under 1 hour</SelectItem>
-                <SelectItem value="120">Under 2 hours</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Clear Filters Button */}
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
-
-        {/* Loading State */}
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-            <p className="mt-2 text-gray-600">Loading recipes...</p>
-          </div>
-        ) : (
-          <>
-            {/* Results Count */}
-            <div className="mb-6 text-center">
-              <p className="text-gray-600">
-                Showing {filteredRecipes.length} of {recipes.length} recipes
-              </p>
-            </div>
-
-            {/* Recipe Grid */}
-            {filteredRecipes.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredRecipes.map((recipe) => (
-                  <RecipeCard key={recipe.id} recipe={recipe} />
-                ))}
-              </div>
-            ) : (
+          <Suspense
+            fallback={
               <div className="text-center py-12">
-                <ChefHat className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-gray-900 mb-2">
-                  No recipes found
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Try adjusting your search terms or filters
-                </p>
-                <button
-                  onClick={clearFilters}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                >
-                  Clear All Filters
-                </button>
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                <p className="mt-2 text-gray-600">Loading recipes...</p>
               </div>
-            )}
-          </>
-        )}
+            }
+          >
+            <RecipesList searchParams={searchParams} />
+          </Suspense>
+        </div>
       </section>
+
+      {/* Blog Posts Section */}
+      <Suspense fallback={<div className="py-16"></div>}>
+        <BlogSection />
+      </Suspense>
 
       <Footer />
     </div>

@@ -20,6 +20,7 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,14 +28,15 @@ export default function AdminLogin() {
     setIsLoading(true);
     setError("");
 
-    // Check hardcoded credentials
-    if (
-      username === process.env.NEXT_PUBLIC_ADMIN_USERNAME &&
-      password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD
-    ) {
+    // Check environment variables for credentials
+    const adminUsername = "admin";
+    const adminPassword = "password";
+
+    if (username === adminUsername && password === adminPassword) {
       // Store admin session in localStorage
       localStorage.setItem("adminAuthenticated", "true");
       localStorage.setItem("adminLoginTime", Date.now().toString());
+      localStorage.setItem("adminMode", "recipe");
       router.push("/dashboard");
     } else {
       setError("Invalid username or password");

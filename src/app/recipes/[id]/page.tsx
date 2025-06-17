@@ -1,12 +1,11 @@
-"use client";
-
-import { Suspense, useState, useEffect } from "react";
+import { Suspense } from "react";
 import { Clock, Users, ChefHat, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "../../../../supabase/client";
+import { createClient } from "../../../../supabase/server";
+import Image from "next/image";
 
 interface Recipe {
   id: string;
@@ -30,53 +29,26 @@ interface RecipePageProps {
   };
 }
 
-function RecipeImage({
-  src,
-  alt,
-  title,
-}: {
-  src: string;
-  alt: string;
-  title: string;
-}) {
-  const [imageSrc, setImageSrc] = useState(
+function RecipeImage({ src, alt }: { src: string; alt: string }) {
+  const imageSrc =
     src ||
-      "https://images.unsplash.com/photo-1546548970-71785318a17b?w=800&q=80",
-  );
+    "https://images.unsplash.com/photo-1546548970-71785318a17b?w=800&q=80";
 
   return (
-    <div className="aspect-video overflow-hidden rounded-lg">
-      <img
+    <div className="aspect-video overflow-hidden rounded-lg relative">
+      <Image
         src={imageSrc}
         alt={alt}
-        className="w-full h-full object-cover"
-        onError={() => {
-          setImageSrc(
-            "https://images.unsplash.com/photo-1546548970-71785318a17b?w=800&q=80",
-          );
-        }}
+        fill
+        className="object-cover"
+        sizes="(max-width: 768px) 100vw, 50vw"
       />
     </div>
   );
 }
 
-export default function RecipePage({ params }: RecipePageProps) {
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // useEffect(() => {
-  //   const recipeId = params.id;
-  //   const mockRecipes = getMockRecipes();
-  //   const foundRecipe = mockRecipes.find((r) => r.id === recipeId);
-
-  //   setRecipe(foundRecipe || null);
-  //   setLoading(false);
-  // }, [params.id]);
-  useEffect(() => {
-    fetchRecipe();
-  }, [params.id]);
-
-  const getMockRecipes = () => [
+function getMockRecipes() {
+  return [
     {
       id: "1",
       title: "Classic Margherita Pizza",
@@ -90,6 +62,24 @@ export default function RecipePage({ params }: RecipePageProps) {
       difficulty: "medium",
       category: "Italian",
       tags: ["pizza", "italian", "vegetarian"],
+      ingredients: [
+        "2 cups all-purpose flour",
+        "1 tsp active dry yeast",
+        "1 tsp salt",
+        "3/4 cup warm water",
+        "2 tbsp olive oil",
+        "1/2 cup pizza sauce",
+        "8 oz fresh mozzarella, sliced",
+        "Fresh basil leaves",
+      ],
+      instructions: [
+        "Mix flour, yeast, and salt in a large bowl",
+        "Add warm water and olive oil, mix until dough forms",
+        "Knead dough for 8-10 minutes until smooth",
+        "Let rise for 1 hour in oiled bowl",
+        "Roll out dough and add toppings",
+        "Bake at 475°F for 12-15 minutes",
+      ],
     },
     {
       id: "2",
@@ -104,6 +94,24 @@ export default function RecipePage({ params }: RecipePageProps) {
       difficulty: "medium",
       category: "Italian",
       tags: ["risotto", "mushroom", "vegetarian"],
+      ingredients: [
+        "1 1/2 cups Arborio rice",
+        "4 cups warm chicken broth",
+        "1 lb mixed mushrooms, sliced",
+        "1 onion, diced",
+        "3 cloves garlic, minced",
+        "1/2 cup white wine",
+        "1/2 cup grated Parmesan",
+        "2 tbsp butter",
+      ],
+      instructions: [
+        "Sauté mushrooms until golden, set aside",
+        "Cook onion and garlic until soft",
+        "Add rice, stir for 2 minutes",
+        "Add wine, stir until absorbed",
+        "Add broth one ladle at a time, stirring constantly",
+        "Fold in mushrooms, butter, and Parmesan",
+      ],
     },
     {
       id: "3",
@@ -118,98 +126,53 @@ export default function RecipePage({ params }: RecipePageProps) {
       difficulty: "easy",
       category: "Dessert",
       tags: ["chocolate", "dessert", "quick"],
-    },
-    {
-      id: "4",
-      title: "Fresh Garden Salad",
-      description:
-        "Crisp mixed greens with seasonal vegetables, cherry tomatoes, and homemade vinaigrette.",
-      image_url:
-        "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&q=80",
-      prep_time: 15,
-      cook_time: 0,
-      servings: 2,
-      difficulty: "easy",
-      category: "Healthy",
-      tags: ["salad", "healthy", "vegetarian"],
-    },
-    {
-      id: "5",
-      title: "Beef Bourguignon",
-      description:
-        "Traditional French braised beef in red wine with pearl onions, mushrooms, and herbs.",
-      image_url:
-        "https://images.unsplash.com/photo-1574484284002-952d92456975?w=400&q=80",
-      prep_time: 30,
-      cook_time: 150,
-      servings: 6,
-      difficulty: "hard",
-      category: "French",
-      tags: ["beef", "french", "wine"],
-    },
-    {
-      id: "6",
-      title: "Lemon Herb Salmon",
-      description:
-        "Pan-seared salmon fillet with fresh herbs, lemon, and a light butter sauce.",
-      image_url:
-        "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400&q=80",
-      prep_time: 10,
-      cook_time: 10,
-      servings: 2,
-      difficulty: "easy",
-      category: "Seafood",
-      tags: ["salmon", "seafood", "healthy"],
+      ingredients: [
+        "4 oz dark chocolate, chopped",
+        "4 tbsp butter",
+        "2 large eggs",
+        "2 tbsp granulated sugar",
+        "2 tbsp all-purpose flour",
+        "Pinch of salt",
+        "Butter for ramekins",
+      ],
+      instructions: [
+        "Preheat oven to 425°F",
+        "Melt chocolate and butter together",
+        "Whisk eggs and sugar until thick",
+        "Fold in chocolate mixture and flour",
+        "Pour into buttered ramekins",
+        "Bake for 10-12 minutes until edges are firm",
+      ],
     },
   ];
+}
 
+async function getRecipe(id: string): Promise<Recipe | null> {
+  try {
+    const supabase = await createClient();
+    const { data: recipes, error } = await supabase
+      .from("recipes")
+      .select("*")
+      .eq("published", true)
+      .eq("id", id)
+      .single();
 
-  const fetchRecipe = async () => {
-    try {
-      const supabase = createClient();
-      const { data: recipes, error } = await supabase
-        .from("recipes")
-        .select("*")
-        .eq("published", true)
-        .order("created_at", { ascending: false });
-
-      let foundRecipe: Recipe | undefined;
-
-      if (error || !recipes || recipes.length === 0) {
-        console.error("Error fetching recipes:", error);
-        foundRecipe = getMockRecipes().find((r) => r.id === params.id);
-      } else {
-        foundRecipe = recipes.find((r: any) => r.id === params.id);
-      }
-
-      setRecipe(foundRecipe || null);
-    } catch (error) {
-      console.error("Error:", error);
-      const foundRecipe = getMockRecipes().find((r) => r.id === params.id);
-      setRecipe(foundRecipe || null);
-    } finally {
-      setLoading(false);
+    if (error || !recipes) {
+      console.error("Error fetching recipe:", error);
+      const mockRecipes = getMockRecipes();
+      return mockRecipes.find((r) => r.id === id) || null;
     }
-  };
 
-
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="pt-20 pb-16">
-          <div className="container mx-auto px-4 max-w-4xl">
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-              <p className="mt-2 text-gray-600">Loading recipe...</p>
-            </div>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
+    return recipes;
+  } catch (error) {
+    console.error("Error:", error);
+    const mockRecipes = getMockRecipes();
+    return mockRecipes.find((r) => r.id === id) || null;
   }
+}
+
+export default async function RecipePage({ params }: RecipePageProps) {
+  const recipe = await getRecipe(params.id);
 
   if (!recipe) {
     notFound();
@@ -288,17 +251,7 @@ export default function RecipePage({ params }: RecipePageProps) {
               </div>
 
               <div>
-                <Suspense
-                  fallback={
-                    <div className="aspect-video bg-gray-200 rounded-lg animate-pulse" />
-                  }
-                >
-                  <RecipeImage
-                    src={recipe.image_url}
-                    alt={recipe.title}
-                    title={recipe.title}
-                  />
-                </Suspense>
+                <RecipeImage src={recipe.image_url} alt={recipe.title} />
               </div>
             </div>
           </div>
