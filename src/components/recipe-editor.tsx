@@ -36,6 +36,7 @@ interface RecipeEditorProps {
   recipe?: Recipe;
   onSave: (recipe: Recipe) => void;
   onCancel: () => void;
+  mode: "recipe" | "blog";
 }
 
 export default function RecipeEditor({
